@@ -65,6 +65,7 @@ type outboundConn struct {
 	conn         Conn
 	transactions map[uint32]string
 	streams      map[uint32]OutboundStream
+	enc          bool
 }
 
 // Connect to FMS server, and finish handshake process
@@ -74,11 +75,14 @@ func Dial(url string, handler OutboundConnHandler, maxChannelNumber int) (Outbou
 		return nil, err
 	}
 	var c net.Conn
+	var enc bool
 	switch rtmpURL.protocol {
 	case "rtmp":
 		c, err = net.Dial("tcp", fmt.Sprintf("%s:%d", rtmpURL.host, rtmpURL.port))
+		enc = false
 	case "rtmps":
 		c, err = tls.Dial("tcp", fmt.Sprintf("%s:%d", rtmpURL.host, rtmpURL.port), &tls.Config{InsecureSkipVerify: true})
+		enc = true
 	default:
 		err = errors.New(fmt.Sprintf("Unsupport protocol %s", rtmpURL.protocol))
 	}
@@ -93,7 +97,7 @@ func Dial(url string, handler OutboundConnHandler, maxChannelNumber int) (Outbou
 	br := bufio.NewReader(c)
 	bw := bufio.NewWriter(c)
 	timeout := time.Duration(10*time.Second)
-	err = Handshake(c, br, bw, timeout)
+	err = Handshake(c, br, bw, timeout, enc)
 	//err = HandshakeSample(c, br, bw, timeout)
 	if err == nil {
 		logger.ModulePrintln(logHandler, log.LOG_LEVEL_DEBUG, "Handshake OK")
@@ -105,6 +109,7 @@ func Dial(url string, handler OutboundConnHandler, maxChannelNumber int) (Outbou
 			status:       OUTBOUND_CONN_STATUS_HANDSHAKE_OK,
 			transactions: make(map[uint32]string),
 			streams:      make(map[uint32]OutboundStream),
+			enc:          enc
 		}
 		obConn.handler.OnStatus(obConn)
 		obConn.conn = NewConn(c, br, bw, obConn, maxChannelNumber)
