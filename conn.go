@@ -115,6 +115,8 @@ type conn struct {
 
 	// Error
 	err error
+
+	buf []byte
 }
 
 // Create new connection
@@ -138,6 +140,7 @@ func NewConn(c net.Conn, br *bufio.Reader, bw *bufio.Writer, handler ConnHandler
 		outBandwidthLimit:           BINDWIDTH_LIMIT_DYNAMIC,
 		handler:                     handler,
 		mediaChunkStreamIDAllocator: make([]bool, maxChannelNumber),
+		buf: make([]byte, 4096),
 	}
 	// Create "Protocol control chunk stream"
 	conn.outChunkStreams[CS_ID_PROTOCOL_CONTROL] = NewOutboundChunkStream(CS_ID_PROTOCOL_CONTROL)
@@ -171,7 +174,7 @@ func (conn *conn) sendMessage(message *Message) {
 	if header.MessageLength > conn.outChunkSize {
 		//		chunkStream.lastHeader = nil
 		// Split into some chunk
-		_, err = CopyNToNetwork(conn.bw, message.Buf, int64(conn.outChunkSize))
+		_, err = CopyNToNetwork(conn.bw, message.Buf, int64(conn.outChunkSize), conn.buf)
 		if err != nil {
 			conn.error(err, "sendMessage copy buffer")
 			return
@@ -185,14 +188,14 @@ func (conn *conn) sendMessage(message *Message) {
 				return
 			}
 			if remain > conn.outChunkSize {
-				_, err = CopyNToNetwork(conn.bw, message.Buf, int64(conn.outChunkSize))
+				_, err = CopyNToNetwork(conn.bw, message.Buf, int64(conn.outChunkSize), conn.buf)
 				if err != nil {
 					conn.error(err, "sendMessage copy split buffer 1")
 					return
 				}
 				remain -= conn.outChunkSize
 			} else {
-				_, err = CopyNToNetwork(conn.bw, message.Buf, int64(remain))
+				_, err = CopyNToNetwork(conn.bw, message.Buf, int64(remain), conn.buf)
 				if err != nil {
 					conn.error(err, "sendMessage copy split buffer 2")
 					return
@@ -201,7 +204,7 @@ func (conn *conn) sendMessage(message *Message) {
 			}
 		}
 	} else {
-		_, err = CopyNToNetwork(conn.bw, message.Buf, int64(header.MessageLength))
+		_, err = CopyNToNetwork(conn.bw, message.Buf, int64(header.MessageLength), conn.buf)
 		if err != nil {
 			conn.error(err, "sendMessage copy buffer")
 			return
