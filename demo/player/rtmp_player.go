@@ -40,11 +40,11 @@ var status uint
 func (handler *TestOutboundConnHandler) OnStatus(conn rtmp.OutboundConn) {
 	var err error
 	status, err = conn.Status()
-	fmt.Printf("@@@@@@@@@@@@@status: %d, err: %v\n", status, err)
+	fmt.Fprintf(os.Stderr, "@@@@@@@@@@@@@status: %d, err: %v\n", status, err)
 }
 
 func (handler *TestOutboundConnHandler) OnClosed(conn rtmp.Conn) {
-	fmt.Printf("@@@@@@@@@@@@@Closed\n")
+	fmt.Fprintf(os.Stderr, "@@@@@@@@@@@@@Closed\n")
 }
 
 func (handler *TestOutboundConnHandler) OnReceived(conn rtmp.Conn, message *rtmp.Message) {
@@ -63,11 +63,11 @@ func (handler *TestOutboundConnHandler) OnReceived(conn rtmp.Conn, message *rtmp
 }
 
 func (handler *TestOutboundConnHandler) OnReceivedRtmpCommand(conn rtmp.Conn, command *rtmp.Command) {
-	fmt.Printf("ReceviedCommand: %+v\n", command)
+	fmt.Fprintf(os.Stderr, "ReceviedCommand: %+v\n", command)
 }
 
 func (handler *TestOutboundConnHandler) OnStreamCreated(conn rtmp.OutboundConn, stream rtmp.OutboundStream) {
-	fmt.Printf("Stream created: %d\n", stream.ID())
+	fmt.Fprintf(os.Stderr, "Stream created: %d\n", stream.ID())
 	createStreamChan <- stream
 }
 
@@ -78,7 +78,7 @@ func main() {
 	}
 	flag.Parse()
 
-	fmt.Printf("rtmp:%s stream:%s flv:%s\r\n", *url, *streamName, *dumpFlv)
+	fmt.Fprintf(os.Stderr, "rtmp:%s stream:%s flv:%s\r\n", *url, *streamName, *dumpFlv)
 	l := log.NewLogger(".", "player", nil, 60, 3600*24, true)
 	rtmp.InitLogger(l)
 	defer l.Close()
@@ -87,7 +87,7 @@ func main() {
 		var err error
 		flvFile, err = flv.CreateFile(*dumpFlv)
 		if err != nil {
-			fmt.Println("Create FLV dump file error:", err)
+			fmt.Fprintf(os.Stderr, "Create FLV dump file error:", err)
 			return
 		}
 	}
@@ -99,7 +99,7 @@ func main() {
 
 	createStreamChan = make(chan rtmp.OutboundStream)
 	testHandler := &TestOutboundConnHandler{}
-	fmt.Println("to dial")
+	fmt.Fprintf(os.Stderr, "to dial")
 
 	var err error
 
@@ -109,7 +109,7 @@ func main() {
 		obConn, err = rtmp.NewOutbounConn(conn, *url, testHandler, 100)
 	*/
 	if err != nil {
-		fmt.Println("Dial error", err)
+		fmt.Fprintf(os.Stderr, "Dial error", err)
 		os.Exit(-1)
 	}
 
